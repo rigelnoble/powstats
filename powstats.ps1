@@ -206,10 +206,10 @@ $seasonStats = $snow | Group-Object season | ForEach-Object {
         Days = ($group.day | Sort-Object -Unique).Count
         'Distance (km)' = [math]::Round(($group | Measure-Object -Property distance -Sum).Sum / 1000, 2)
         'Vertical (m)' = [math]::Round(($group | Measure-Object -Property vertical_drop -Sum).Sum, 2)
-        'Non-Chairlift Uphill Gain (m)' = [math]::Round(($group | Measure-Object -Property total_elevation_gain -Sum).Sum, 2)
+        'Uphill Ascent (m)' = [math]::Round(($group | Measure-Object -Property total_elevation_gain -Sum).Sum, 2)
         'Moving Time (h)' = [math]::Round(($group | Measure-Object -Property moving_time -Sum).Sum / 3600, 2)
         'Elapsed Time (h)' = [math]::Round(($group | Measure-Object -Property elapsed_time -Sum).Sum / 3600, 2)
-        'Max Speed (km/h)' = [math]::Round(($group | Measure-Object -Property max_speed -Maximum).Maximum * 3.6, 2)
+        'All Time Max Speed (km/h)' = [math]::Round(($group | Measure-Object -Property max_speed -Maximum).Maximum * 3.6, 2)
         'Avg Max Speed (km/h)' = [math]::Round((($group | Measure-Object -Property max_speed -Average).Average) * 3.6, 2)
         'Avg Speed (km/h)' = [math]::Round((($group | Measure-Object -Property average_speed -Average).Average) * 3.6, 2)
     }
@@ -218,7 +218,6 @@ $seasonStats = $snow | Group-Object season | ForEach-Object {
 
 # Output
 Write-Host "`npowstats" -ForegroundColor Cyan
-Write-Host "`nBy Season (Northern Hemisphere Winter)"
 $seasonStats | Format-Table -AutoSize
 # OPTIONAL: Stats by calendar year
 <#

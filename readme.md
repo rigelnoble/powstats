@@ -2,12 +2,14 @@
 PowerShell script to provide enhanced analysis of snowboarding activity data using Strava's API.
 
 ## What it does
-Retrieves your personal Strava snowboarding activities and calculates statistics grouped by season (Northern Hemisphere winter) and optionally by calendar year:
+Retrieves your personal Strava snowboarding activities and calculates statistics grouped by season, or optionally by calendar year.
+
+Statistics include:
 
 - Days snowboarded
-- Distance travelled (km)
+- Distance traveled (km)
 - Vertical descent (m) - calculated from GPS elevation data
-- Uphill ascent (m) - bootpacking, hiking
+- Uphill ascent (m) - bootpacking / hiking, uphill sections
 - Moving time vs elapsed time (hours)
 - All time max speed and average max speed per activity (km/h)
 - Average speed (km/h)
@@ -32,7 +34,7 @@ The script makes two API calls per snowboarding activity:
 - One call to fetch activity list (shared across all activities)
 - One call per activity to fetch GPS elevation streams. This is required for accurate elevation calculations.
 
-Strava API rate limits:
+**Strava API rate limits:**
 - 100 requests per 15 minutes (read operations)
 - 1,000 requests per day (read operations)
 

@@ -5,6 +5,9 @@ $CredFile = "$env:APPDATA\powstats_strava.xml"
 $TokenFile = "$env:APPDATA\powstats_token.json"
 $RedirectUri = "http://localhost:9876/callback"
 
+# OPTIONAL: Set to a season (e.g. "2025-2026") to process only that season's activities
+$SeasonFilter = "2025-2026"  # Change to "2025-2026" to filter that season, otherwise leave as "$null" for all.
+
 # Setup function - run once
 function Initialize-StravaAuth {
     Write-Host "`n=== Strava API Setup ===" -ForegroundColor Cyan
@@ -85,6 +88,18 @@ function Get-VerticalDescent($elevationData) {
     return $totalDescent
 }
 
+# Fetch detailed activity data including laps
+function Get-ActivityDetails($activityId, $headers) {
+    try {
+        $activity = Invoke-RestMethod "https://www.strava.com/api/v3/activities/$activityId" -Headers $headers
+        return $activity
+    }
+    catch {
+        Write-Host "  Warning: Could not fetch details for activity $activityId - $_" -ForegroundColor Yellow
+    }
+    return $null
+}
+
 # Fetch streams for an activity
 function Get-ActivityStreams($activityId, $headers) {
     try {
@@ -97,6 +112,11 @@ function Get-ActivityStreams($activityId, $headers) {
         Write-Host "  Warning: Could not fetch streams for activity $activityId - $_" -ForegroundColor Yellow
     }
     return $null
+}
+
+function Get-Season($d) {
+    if ($d.Month -ge 7) { "$($d.Year)-$($d.Year+1)" }
+    else { "$($d.Year-1)-$($d.Year)" }
 }
 
 # Check if setup needed
@@ -148,35 +168,48 @@ do {
     $page++
 } while ($batch.Count -gt 0)
 
-Write-Host "Total activities downloaded: $($activities.Count)" -ForegroundColor Green
-
 # Filter snowboarding
 $snow = $activities | Where-Object { $_.type -eq "Snowboard" }
-Write-Host "Snowboarding activities: $($snow.Count)" -ForegroundColor Green
+
+# Add dates first for season filtering
+$snow | ForEach-Object {
+    $_ | Add-Member -NotePropertyName date -NotePropertyValue ([datetime]$_.start_date)
+    $_ | Add-Member -NotePropertyName season -NotePropertyValue (Get-Season $_.date)
+}
+
+# Apply season filter if specified
+if ($SeasonFilter) {
+    $snow = $snow | Where-Object { $_.season -eq $SeasonFilter }
+    Write-Host "Found $($snow.Count) snowboarding activities in season $SeasonFilter`n" -ForegroundColor Green
+} else {
+    Write-Host "Found $($snow.Count) snowboarding activities`n" -ForegroundColor Green
+}
 
 # Parse dates and fetch elevation streams for accurate vertical descent
-Write-Host "`nFetching elevation data..." -ForegroundColor Cyan
+Write-Host "Calculating vertical descent and run counts (this may take a moment)..." -ForegroundColor Cyan
 $processedCount = 0
 $snow | ForEach-Object {
     $processedCount++
-    Write-Host "  Processing activity $processedCount of $($snow.Count): $($_.name)" -ForegroundColor Gray
     
-    $_ | Add-Member -NotePropertyName date -NotePropertyValue ([datetime]$_.start_date)
+    # Fetch detailed activity data for lap count
+    $details = Get-ActivityDetails $_.id $Headers
+    $runCount = if ($details -and $details.laps) { $details.laps.Count } else { 0 }
+    $_ | Add-Member -NotePropertyName run_count -NotePropertyValue $runCount
     
     # Fetch elevation stream and calculate vertical descent
     $elevationStream = Get-ActivityStreams $_.id $Headers
     $verticalDescent = Get-VerticalDescent $elevationStream
     
     $_ | Add-Member -NotePropertyName vertical_drop -NotePropertyValue $verticalDescent
+    
+    # Progress indicator every 10 activities
+    if ($processedCount % 10 -eq 0) {
+        Write-Host "  Processed $processedCount of $($snow.Count) activities..." -ForegroundColor Gray
+    }
 }
-
-function Get-Season($d) {
-    if ($d.Month -ge 7) { "$($d.Year)-$($d.Year+1)" }
-    else { "$($d.Year-1)-$($d.Year)" }
-}
+Write-Host "Processing complete`n" -ForegroundColor Green
 
 $snow | ForEach-Object {
-    $_ | Add-Member season (Get-Season $_.date)
     $_ | Add-Member day $_.date.Date
 }
 
@@ -186,30 +219,32 @@ $seasonStats = $snow | Group-Object season | ForEach-Object {
     [pscustomobject]@{
         Season = $_.Name
         Days = ($group.day | Sort-Object -Unique).Count
+        Runs = [int](($group | Measure-Object -Property run_count -Sum).Sum)
         'Distance (km)' = [math]::Round(($group | Measure-Object -Property distance -Sum).Sum / 1000, 2)
-        'Vertical Descent (m)' = [math]::Round(($group | Measure-Object -Property vertical_drop -Sum).Sum, 2)
+        'Vertical Descent (km)' = [math]::Round(($group | Measure-Object -Property vertical_drop -Sum).Sum / 1000, 2)
         'Uphill Ascent (m)' = [math]::Round(($group | Measure-Object -Property total_elevation_gain -Sum).Sum, 2)
         'Moving Time (h)' = [math]::Round(($group | Measure-Object -Property moving_time -Sum).Sum / 3600, 2)
         'Elapsed Time (h)' = [math]::Round(($group | Measure-Object -Property elapsed_time -Sum).Sum / 3600, 2)
-        'All Time Max Speed (km/h)' = [math]::Round(($group | Measure-Object -Property max_speed -Maximum).Maximum * 3.6, 2)
+        'Max Speed (km/h)' = [math]::Round(($group | Measure-Object -Property max_speed -Maximum).Maximum * 3.6, 2)
         'Avg Max Speed (km/h)' = [math]::Round((($group | Measure-Object -Property max_speed -Average).Average) * 3.6, 2)
         'Avg Speed (km/h)' = [math]::Round((($group | Measure-Object -Property average_speed -Average).Average) * 3.6, 2)
     }
 } | Sort-Object Season -Descending
 
-# OPTIONAL: Calendar year stats
+#OPTIONAL: Calendar year stats
 <#
- $yearStats = $snow | Group-Object { $_.date.Year } | ForEach-Object {
+$yearStats = $snow | Group-Object { $_.date.Year } | ForEach-Object {
     $group = $_.Group
     [pscustomobject]@{
         Year = $_.Name
         Days = ($group.day | Sort-Object -Unique).Count
+        Runs = [int](($group | Measure-Object -Property run_count -Sum).Sum)
         'Distance (km)' = [math]::Round(($group | Measure-Object -Property distance -Sum).Sum / 1000, 2)
-        'Vertical (m)' = [math]::Round(($group | Measure-Object -Property vertical_drop -Sum).Sum, 2)
+        'Vertical Descent (km)' = [math]::Round(($group | Measure-Object -Property vertical_drop -Sum).Sum / 1000, 2)
         'Uphill Ascent (m)' = [math]::Round(($group | Measure-Object -Property total_elevation_gain -Sum).Sum, 2)
         'Moving Time (h)' = [math]::Round(($group | Measure-Object -Property moving_time -Sum).Sum / 3600, 2)
         'Elapsed Time (h)' = [math]::Round(($group | Measure-Object -Property elapsed_time -Sum).Sum / 3600, 2)
-        'All Time Max Speed (km/h)' = [math]::Round(($group | Measure-Object -Property max_speed -Maximum).Maximum * 3.6, 2)
+        'Max Speed (km/h)' = [math]::Round(($group | Measure-Object -Property max_speed -Maximum).Maximum * 3.6, 2)
         'Avg Max Speed (km/h)' = [math]::Round((($group | Measure-Object -Property max_speed -Average).Average) * 3.6, 2)
         'Avg Speed (km/h)' = [math]::Round((($group | Measure-Object -Property average_speed -Average).Average) * 3.6, 2)
     }
@@ -217,9 +252,15 @@ $seasonStats = $snow | Group-Object season | ForEach-Object {
 #>
 
 # Output
-Write-Host "`npowstats" -ForegroundColor Cyan
+Write-Host "                              __        __      
+    ____  ____ _      _______/ /_____ _/ /______
+   / __ \/ __ \ | /| / / ___/ __/ __ `/ __/ ___/
+  / /_/ / /_/ / |/ |/ (__  ) /_/ /_/ / /_(__  ) 
+ / .___/\____/|__/|__/____/\__/\__,_/\__/____/  
+/_/ " -ForegroundColor Cyan
+Write-Host "`nBy Season"
 $seasonStats | Format-Table -AutoSize
-# OPTIONAL: Stats by calendar year
+# OPTIONAL:
 <#
 Write-Host "By Calendar Year"
 $yearStats | Format-Table -AutoSize

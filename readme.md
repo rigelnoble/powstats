@@ -7,10 +7,12 @@ Retrieves your personal Strava snowboarding activities and calculates statistics
 Statistics include:
 
 - Days snowboarded
+- Number of runs
 - Distance traveled (km)
 - Vertical descent (m) - calculated from GPS elevation data
 - Uphill ascent (m) - bootpacking / hiking, uphill sections
-- Moving time vs elapsed time (hours)
+- Moving time (hours)
+- Elapsed time (hours)
 - All time max speed and average max speed per activity (km/h)
 - Average speed (km/h)
 
@@ -39,10 +41,17 @@ The script makes two API calls per snowboarding activity:
 - 1,000 requests per day (read operations)
 
 ### Expected usage
-- 50 activities = ~51 API calls (~8 minutes to avoid rate limits)
-- 100 activities = ~101 API calls (will hit 15-minute rate limit, script will need to be run in batches or with delays)
 
-For large activity counts (100+), consider running the script in multiple sessions or adding rate limit handling.
+The script makes two API calls per snowboarding activity, plus an initial to fetch the entire activity list (shared across all). The other two are: 
+1. One call per activity to fetch detailed data (for run/lap counts)
+2. One call per activity to fetch GPS elevation streams (for accurate vertical descent)
+
+**Estimated API usage**:
+- 50 activities = ~101 API calls (within 100/15min read limit)
+- 75 activities = ~151 API calls (will exceed 100/15min limit, expect ~8 minute wait for rate limit reset)
+- 100 activities = ~201 API calls (will exceed both 100/15min and 200/15min overall limits)
+
+For large activity counts (75+), the script may fail when hitting rate limits. Consider using the season filter (e.g. `$SeasonFilter = "2025-2026"`) to process only recent activities and reduce API calls.
 
 ## Security
 

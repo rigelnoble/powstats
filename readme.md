@@ -58,16 +58,16 @@ For large activity counts (75+), the script may fail when hitting rate limits. C
 - No secrets hardcoded in script
 - API credentials encrypted using Windows Data Protection API
 - Only accessible by your Windows user account
-- OAuth tokens stored locally, not in version control
+- OAuth tokens stored locally
 - Read-only access to your activities (`activity:read_all scope`)
 
 ## Limitations
 
-- Vertical descent calculated from GPS elevation streams - requires one API call per activity, which can approach rate limits for users with 100+ activities
+- Vertical descent calculated from GPS elevation streams - requires one API call per activity, which can approach rate limits for users with many activities
 - GPS elevation data can have minor inaccuracies due to barometric sensor drift or GPS noise (typically ±1-2% variance from Strava's app calculations)
 - Season defined as northern hemisphere winter
-- Requires Windows (uses DPAPI for credential encryption)
-- Will not count backcountry snowboarding or any ski activities although this is probably an easy future addition. Sorry skiers, one plank is much better.
+- Requires Windows OS (uses DPAPI for credential encryption)
+- Will not count backcountry snowboarding or any ski activities (although this is probably an easy future addition). Sorry skiers, one plank is much better.
 
 ## Disclaimer
 - Personal use only - not designed for multi-user or production environments

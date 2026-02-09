@@ -55,7 +55,7 @@ The script processes the following Strava activity types:
 - **NordicSki** - cross-country skiing
 
 ## Season filtering
-To process only a specific season's activities, edit line 17 in the script:
+To process only a specific season's activities, edit this value in the script:
 ```powershell
 $SeasonFilter = "2025-2026"  # Process only 2025-2026 season
 $SeasonFilter = $null        # Process all seasons
@@ -78,8 +78,6 @@ The script makes three API calls per winter sport activity:
 - 100 activities = ~201 API calls (will exceed both 100/15min and 200/15min overall limits)
 
 For large activity counts (75+), use the season filter to process only recent activities.
-
-The caching logic detailed below is designed to workaround the Strava API's rate limits to minimise API calls for users with high activity counts and anyone who may run the script repeatedly (me, during testing).
 
 ## Caching
 The script caches processed activity data (run counts, vertical descent) to `%APPDATA%\powstats\activity_cache.json`.

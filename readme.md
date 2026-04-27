@@ -2,6 +2,8 @@
 
 PowerShell script for enhanced analysis of Strava winter sport activity data.
 
+<img width="1347" height="1093" alt="powstats-revy-2025-26" src="https://github.com/user-attachments/assets/8a8edfaa-0b2a-4c0f-a534-17ddf8370f4c" />
+
 ## Functionality
 
 Retrieves your personal Strava winter sport activities (snowboarding, skiing, backcountry touring and nordic skiing) and calculates the following statistics grouped by season (or optionally by calendar year):

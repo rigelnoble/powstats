@@ -57,11 +57,19 @@ The script processes the following Strava activity types:
 - **NordicSki** - cross-country skiing
 
 ## Season filtering
-To process only a specific season's activities, edit this value in the script:
+To process only a specific season's activities, edit this value near the top of the script:
 ```powershell
 $SeasonFilter = "2025-2026"  # Process only 2025-2026 season
 $SeasonFilter = $null        # Process all seasons
 ```
+
+Seasons run July-June (Northern Hemisphere winter). For example, `"2025-2026"` covers July 2025 through June 2026.
+
+## Calendar year output
+Statistics grouped by calendar year are available but disabled by default. To enable, uncomment the two blocks marked `#OPTIONAL` in the script:
+
+1. The `$yearStats = ...` calculation block
+2. The `foreach ($stat in $yearStats)` output block
 
 ## Performance and rate limits
 
@@ -93,7 +101,7 @@ The script caches processed activity data (run counts, vertical descent) to `%AP
 - Avoids recalculating vertical descent for unchanged activities
 - Useful when you've edited/corrected old activities and need to reprocess them
 
-**Note:** Caching does not reduce API calls significantly, as the script must still check each activity's `updated_at` timestamp. The primary benefit is avoiding redundant GPS elevation calculations.
+**Note:** On repeat runs where no activities have changed, caching reduces API calls from ~2 per activity down to a single activity list fetch - a near-total saving. The script must always fetch the activity list to check `updated_at` timestamps, but details and elevation stream calls are skipped for cached activities.
 
 **Cache management:**
 - Cache persists between runs automatically
@@ -134,7 +142,7 @@ Results are displayed in four tables per season:
 
 ## Troubleshooting
 
-**Rate limit errors:** Wait 15 minutes and run again, or use season filter to reduce activities processed
+**Rate limit errors:** The script detects Strava's 429 rate limit response and prints a clear message. Wait 15 minutes and run again. On subsequent runs, the cache means only new or modified activities require API calls, so re-runs are much faster. Use the season filter to reduce the number of activities processed on first run.
 
 **Cache not working:** Delete `%APPDATA%\powstats\activity_cache.json` to start fresh
 
